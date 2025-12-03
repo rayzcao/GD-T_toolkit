@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GD&T Master Toolkit</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .tab-active {
+            border-bottom: 2px solid #2563eb;
+            color: #2563eb;
+        }
+        .input-group label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.25rem;
+            display: block;
+        }
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            background-color: #fff;
+            transition: border-color 0.15s ease-in-out;
+        }
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        /* Custom scrollbar for symbol list */
+        .symbol-grid::-webkit-scrollbar {
+            width: 6px;
+        }
+        .symbol-grid::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        .symbol-grid::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 3px;
+        }
+        .symbol-grid::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+    </style>
+</head>
+<body class="text-gray-800 h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shadow-sm z-10">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-600 p-2 rounded-lg text-white">
+                <i data-lucide="rulers" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold text-gray-900">GD&T Master Toolkit</h1>
+                <p class="text-xs text-gray-500">Geometric Dimensioning and Tolerancing Solver</p>
+                <p class="text-xs text-gray-500">Author: Raymond Cao</p>
+            </div>
+        </div>
+        <div class="hidden md:flex items-center gap-4 text-sm text-gray-600">
+            <span class="flex items-center gap-1"><i data-lucide="check-circle-2" class="w-4 h-4 text-green-500"></i> ASME Y14.5 Compliant</span>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+        
+        <!-- Sidebar / Navigation -->
+        <nav class="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex">
+            <div class="p-4 space-y-1">
+                <button onclick="switchTab('position')" id="nav-position" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg bg-blue-50 text-blue-700">
+                    <i data-lucide="crosshair" class="w-5 h-5"></i>
+                    True Position
+                </button>
+                <button onclick="switchTab('bonus')" id="nav-bonus" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg text-gray-600 hover:bg-gray-50">
+                    <i data-lucide="plus-circle" class="w-5 h-5"></i>
+                    Bonus Tolerance
+                </button>
+                <button onclick="switchTab('symbols')" id="nav-symbols" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg text-gray-600 hover:bg-gray-50">
+                    <i data-lucide="book-open" class="w-5 h-5"></i>
+                    Symbol Library
+                </button>
+            </div>
+            <div class="mt-auto p-6 border-t border-gray-100">
+                <div class="bg-blue-50 rounded-xl p-4">
+                    <h4 class="font-semibold text-blue-800 text-sm mb-1">Tip of the day</h4>
+                    <p class="text-xs text-blue-600 leading-relaxed">
+                        The Rule #1 (Envelope Principle) states that where only a size tolerance is specified, the limits of size prescribe the extent of form variations.
+                    </p>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Mobile Nav Tabs -->
+        <div class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around p-2 z-20">
+            <button onclick="switchTab('position')" class="flex flex-col items-center p-2 text-blue-600">
+                <i data-lucide="crosshair" class="w-6 h-6"></i>
+                <span class="text-xs mt-1">Position</span>
+            </button>
+            <button onclick="switchTab('bonus')" class="flex flex-col items-center p-2 text-gray-500">
+                <i data-lucide="plus-circle" class="w-6 h-6"></i>
+                <span class="text-xs mt-1">Bonus</span>
+            </button>
+            <button onclick="switchTab('symbols')" class="flex flex-col items-center p-2 text-gray-500">
+                <i data-lucide="book-open" class="w-6 h-6"></i>
+                <span class="text-xs mt-1">Symbols</span>
+            </button>
+        </div>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-8 relative">
+            
+            <!-- SECTION: True Position Calculator -->
+            <div id="section-position" class="max-w-4xl mx-auto">
+                <div class="flex justify-between items-end mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900">True Position Calculator</h2>
+                        <p class="text-gray-500 mt-1">Calculate deviation from true position for holes or pins.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Inputs -->
+                    <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-sm border border-gray-200 space-y-5">
+                        <h3 class="font-semibold text-gray-800 border-b pb-2">Coordinates</h3>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="input-group">
+                                <label>Target X</label>
+                                <input type="number" step="0.001" id="targetX" value="0.000" oninput="calculatePosition()">
+                            </div>
+                            <div class="input-group">
+                                <label>Target Y</label>
+                                <input type="number" step="0.001" id="targetY" value="0.000" oninput="calculatePosition()">
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="input-group">
+                                <label>Actual X</label>
+                                <input type="number" step="0.001" id="actualX" value="0.005" oninput="calculatePosition()">
+                            </div>
+                            <div class="input-group">
+                                <label>Actual Y</label>
+                                <input type="number" step="0.001" id="actualY" value="0.002" oninput="calculatePosition()">
+                            </div>
+                        </div>
+
+                        <h3 class="font-semibold text-gray-800 border-b pb-2 pt-2">Tolerance</h3>
+                        <div class="input-group">
+                            <label>Feature Tolerance (Ø)</label>
+                            <input type="number" step="0.001" id="posTol" value="0.014" oninput="calculatePosition()">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="useMMC" class="w-4 h-4 text-blue-600 rounded" onchange="toggleMMCInputs()">
+                            <label for="useMMC" class="text-sm font-medium text-gray-700">Apply MMC Modifier (ⓜ)</label>
+                        </div>
+                        
+                        <div id="mmcInputs" class="space-y-4 hidden bg-gray-50 p-3 rounded-lg border border-gray-200">
+                            <div class="input-group">
+                                <label>Feature Type</label>
+                                <select id="featureType" onchange="calculatePosition()">
+                                    <option value="internal">Internal (Hole)</option>
+                                    <option value="external">External (Pin)</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>MMC Limit (Size)</label>
+                                <input type="number" step="0.001" id="limitMMC" value="0.500" oninput="calculatePosition()">
+                            </div>
+                            <div class="input-group">
+                                <label>Actual Feature Size</label>
+                                <input type="number" step="0.001" id="actualSize" value="0.502" oninput="calculatePosition()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Visual & Results -->
+                    <div class="lg:col-span-2 space-y-6">
+                        <!-- Results Cards -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                                <div class="text-xs font-semibold text-gray-500 uppercase">Actual Deviation</div>
+                                <div class="text-2xl font-bold text-gray-900 mt-1" id="devResult">0.0000</div>
+                                <div class="text-xs text-gray-400 mt-1">Formula: 2 × √(Δx² + Δy²)</div>
+                            </div>
+                            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                                <div class="text-xs font-semibold text-gray-500 uppercase">Allowed Tolerance</div>
+                                <div class="text-2xl font-bold text-blue-600 mt-1" id="totalTolResult">0.0140</div>
+                                <div class="text-xs text-gray-400 mt-1" id="bonusText">Base: 0.014 + Bonus: 0.000</div>
+                            </div>
+                            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-center items-center" id="passFailCard">
+                                <div class="text-sm font-bold uppercase tracking-wider" id="statusLabel">STATUS</div>
+                                <div class="text-xl font-black mt-1" id="statusResult">PASS</div>
+                            </div>
+                        </div>
+
+                        <!-- Visualization -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col items-center justify-center relative min-h-[300px]">
+                            <h4 class="absolute top-4 left-6 font-semibold text-gray-500 text-sm">Visual Representation</h4>
+                            <svg id="posViz" width="300" height="300" viewBox="-1.5 -1.5 3 3" class="border border-gray-100 rounded-full bg-gray-50">
+                                <!-- Grid Lines -->
+                                <line x1="-1.5" y1="0" x2="1.5" y2="0" stroke="#e5e7eb" stroke-width="0.02" />
+                                <line x1="0" y1="-1.5" x2="0" y2="1.5" stroke="#e5e7eb" stroke-width="0.02" />
+                                
+                                <!-- Tolerance Zone Circle -->
+                                <circle id="vizTolZone" cx="0" cy="0" r="0.5" fill="rgba(37, 99, 235, 0.1)" stroke="#2563eb" stroke-width="0.02" stroke-dasharray="0.1 0.05" />
+                                
+                                <!-- Actual Point -->
+                                <line id="vizLine" x1="0" y1="0" x2="0.3" y2="0.3" stroke="#ef4444" stroke-width="0.02" />
+                                <circle id="vizPoint" cx="0.3" cy="0.3" r="0.08" fill="#ef4444" />
+                                
+                                <!-- Labels handled via overlay text for clarity -->
+                            </svg>
+                            <div class="mt-4 text-xs text-gray-500 flex gap-4">
+                                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-blue-100 border border-blue-500"></span> Tolerance Zone</span>
+                                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-red-500"></span> Actual Center</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION: Bonus Tolerance Calculator -->
+            <div id="section-bonus" class="hidden max-w-4xl mx-auto">
+                <div class="flex justify-between items-end mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900">Bonus Tolerance Calculator</h2>
+                        <p class="text-gray-500 mt-1">Determine additional tolerance gained from feature size departure from MMC/LMC.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Config -->
+                    <div class="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
+                        <div class="flex space-x-4 mb-6">
+                            <button onclick="setBonusMode('mmc')" id="btn-mmc" class="flex-1 py-2 px-4 rounded-lg bg-blue-600 text-white font-medium text-sm transition-colors">MMC (ⓜ)</button>
+                            <button onclick="setBonusMode('lmc')" id="btn-lmc" class="flex-1 py-2 px-4 rounded-lg bg-gray-100 text-gray-600 font-medium text-sm hover:bg-gray-200 transition-colors">LMC (ⓛ)</button>
+                        </div>
+
+                        <div class="space-y-5">
+                            <div class="input-group">
+                                <label>Feature Type</label>
+                                <select id="bonusFeatureType" onchange="calculateBonus()">
+                                    <option value="internal">Internal Feature (Hole/Slot)</option>
+                                    <option value="external">External Feature (Pin/Tab)</option>
+                                </select>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="input-group">
+                                    <label>Geometric Tolerance</label>
+                                    <input type="number" id="baseTol" value="0.010" step="0.001" oninput="calculateBonus()">
+                                </div>
+                                <div class="input-group">
+                                    <label id="lbl-limit">MMC Limit Size</label>
+                                    <input type="number" id="limitSize" value="0.500" step="0.001" oninput="calculateBonus()">
+                                </div>
+                            </div>
+                            
+                            <div class="input-group p-4 bg-yellow-50 rounded-lg border border-yellow-100">
+                                <label class="text-yellow-800">Actual Produced Size</label>
+                                <input type="number" id="producedSize" value="0.505" step="0.001" class="mt-1" oninput="calculateBonus()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Explanation & Output -->
+                    <div class="space-y-4">
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                            <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Calculation Results</h3>
+                            
+                            <div class="flex justify-between items-center py-3 border-b border-gray-100">
+                                <span class="text-gray-600">Base Tolerance</span>
+                                <span class="font-mono font-medium" id="resBase">0.010</span>
+                            </div>
+                            <div class="flex justify-between items-center py-3 border-b border-gray-100">
+                                <span class="text-gray-600">Departure (Bonus)</span>
+                                <span class="font-mono font-bold text-green-600" id="resBonus">+ 0.005</span>
+                            </div>
+                            <div class="flex justify-between items-center py-4">
+                                <span class="text-gray-900 font-bold">Total Permissible Tolerance</span>
+                                <span class="font-mono text-2xl font-black text-blue-600" id="resTotal">0.015</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-blue-50 p-6 rounded-xl border border-blue-100">
+                            <div class="flex gap-3">
+                                <i data-lucide="info" class="w-6 h-6 text-blue-600 flex-shrink-0"></i>
+                                <div>
+                                    <h4 class="font-semibold text-blue-900 text-sm">How it works</h4>
+                                    <p class="text-sm text-blue-700 mt-1 leading-relaxed" id="bonusExplanation">
+                                        For an internal feature at MMC, as the hole gets larger (departs from MMC), you gain bonus tolerance equal to that difference.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION: Symbol Library -->
+            <div id="section-symbols" class="hidden max-w-6xl mx-auto">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900">GD&T Symbol Library</h2>
+                    <p class="text-gray-500 mt-1">Reference guide for geometric characteristic symbols.</p>
+                </div>
+
+                <!-- Filters -->
+                <div class="flex gap-2 overflow-x-auto pb-4 mb-2">
+                    <button onclick="filterSymbols('all')" class="px-4 py-1.5 rounded-full bg-gray-800 text-white text-sm font-medium whitespace-nowrap">All</button>
+                    <button onclick="filterSymbols('form')" class="px-4 py-1.5 rounded-full bg-white border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 whitespace-nowrap">Form</button>
+                    <button onclick="filterSymbols('orientation')" class="px-4 py-1.5 rounded-full bg-white border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 whitespace-nowrap">Orientation</button>
+                    <button onclick="filterSymbols('location')" class="px-4 py-1.5 rounded-full bg-white border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 whitespace-nowrap">Location</button>
+                    <button onclick="filterSymbols('runout')" class="px-4 py-1.5 rounded-full bg-white border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 whitespace-nowrap">Runout</button>
+                    <button onclick="filterSymbols('profile')" class="px-4 py-1.5 rounded-full bg-white border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 whitespace-nowrap">Profile</button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 symbol-grid" id="symbolGrid">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // --- Navigation Logic ---
+        function switchTab(tabId) {
+            // Hide all sections
+            document.getElementById('section-position').classList.add('hidden');
+            document.getElementById('section-bonus').classList.add('hidden');
+            document.getElementById('section-symbols').classList.add('hidden');
+            
+            // Show selected
+            document.getElementById('section-' + tabId).classList.remove('hidden');
+
+            // Update Desktop Sidebar Style
+            const buttons = ['position', 'bonus', 'symbols'];
+            buttons.forEach(btn => {
+                const el = document.getElementById('nav-' + btn);
+                if(btn === tabId) {
+                    el.classList.remove('text-gray-600', 'hover:bg-gray-50');
+                    el.classList.add('bg-blue-50', 'text-blue-700');
+                } else {
+                    el.classList.add('text-gray-600', 'hover:bg-gray-50');
+                    el.classList.remove('bg-blue-50', 'text-blue-700');
+                }
+            });
+            
+            // Initialize lucide icons again just in case
+            lucide.createIcons();
+        }
+
+        // --- Position Calculator Logic ---
+        function toggleMMCInputs() {
+            const isChecked = document.getElementById('useMMC').checked;
+            const container = document.getElementById('mmcInputs');
+            if (isChecked) {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+            calculatePosition();
+        }
+
+        function calculatePosition() {
+            // Get inputs
+            const tx = parseFloat(document.getElementById('targetX').value) || 0;
+            const ty = parseFloat(document.getElementById('targetY').value) || 0;
+            const ax = parseFloat(document.getElementById('actualX').value) || 0;
+            const ay = parseFloat(document.getElementById('actualY').value) || 0;
+            let baseTol = parseFloat(document.getElementById('posTol').value) || 0;
+
+            // Calculate Deviation (Actual Position Error)
+            // Formula: 2 * sqrt((dx)^2 + (dy)^2)
+            const dx = ax - tx;
+            const dy = ay - ty;
+            const distance = Math.sqrt(dx*dx + dy*dy);
+            const deviation = distance * 2;
+
+            // Calculate Bonus if applicable
+            let bonus = 0;
+            const useMMC = document.getElementById('useMMC').checked;
+            
+            if (useMMC) {
+                const type = document.getElementById('featureType').value;
+                const limitMMC = parseFloat(document.getElementById('limitMMC').value) || 0;
+                const actSize = parseFloat(document.getElementById('actualSize').value) || 0;
+
+                if (type === 'internal') {
+                    // Hole: MMC is smallest hole. As hole gets bigger, bonus increases.
+                    // Bonus = Actual Size - MMC Limit (if Actual > MMC)
+                    if (actSize > limitMMC) {
+                        bonus = actSize - limitMMC;
+                    }
+                } else {
+                    // Pin: MMC is largest pin. As pin gets smaller, bonus increases.
+                    // Bonus = MMC Limit - Actual Size (if Actual < MMC)
+                    if (actSize < limitMMC) {
+                        bonus = limitMMC - actSize;
+                    }
+                }
+                // Bonus cannot be negative in standard context (it just becomes 0 if violates size limits, 
+                // but for calculation purposes we clamp at 0 here unless we wanted to warn about size limit violation)
+                if (bonus < 0) bonus = 0;
+            }
+
+            const totalTol = baseTol + bonus;
+
+            // Update UI Text
+            document.getElementById('devResult').innerText = deviation.toFixed(4);
+            document.getElementById('totalTolResult').innerText = totalTol.toFixed(4);
+            document.getElementById('bonusText').innerText = useMMC 
+                ? `Base: ${baseTol.toFixed(3)} + Bonus: ${bonus.toFixed(3)}`
+                : 'No Material Modifier applied';
+
+            // Pass/Fail
+            const statusCard = document.getElementById('passFailCard');
+            const statusText = document.getElementById('statusResult');
+            
+            if (deviation <= totalTol) {
+                statusText.innerText = "PASS";
+                statusText.classList.remove('text-red-600');
+                statusText.classList.add('text-green-600');
+                statusCard.classList.remove('border-red-200', 'bg-red-50');
+                statusCard.classList.add('border-green-200', 'bg-green-50');
+                document.getElementById('statusLabel').classList.remove('text-red-500');
+                document.getElementById('statusLabel').classList.add('text-green-500');
+            } else {
+                statusText.innerText = "FAIL";
+                statusText.classList.remove('text-green-600');
+                statusText.classList.add('text-red-600');
+                statusCard.classList.remove('border-green-200', 'bg-green-50');
+                statusCard.classList.add('border-red-200', 'bg-red-50');
+                document.getElementById('statusLabel').classList.remove('text-green-500');
+                document.getElementById('statusLabel').classList.add('text-red-500');
+            }
+
+            // Update SVG Visualization
+            updatePosViz(dx, dy, totalTol, deviation);
+        }
+
+        function updatePosViz(dx, dy, totalTol, deviation) {
+            // We need to scale the drawing to fit in the viewBox -1.5 to 1.5
+            // Let's assume the ViewBox represents roughly 2x or 3x the Tolerance Zone for context
+            
+            // Normalize: Let the Tolerance Zone Radius be fixed visually if we want to show point moving relative to it,
+            // OR scale the zone relative to a fixed grid.
+            // Approach: Tolerance Zone Diameter (totalTol) = 1 unit in SVG space (Radius 0.5)
+            
+            // Scale Factor
+            // We want totalTol to be represented by diameter 1.0 (r=0.5)
+            // So: scale = 1.0 / totalTol
+            // If totalTol is 0, avoid divide by zero
+            const safeTol = totalTol === 0 ? 0.001 : totalTol;
+            const scale = 1.0 / safeTol;
+
+            // Scaled Points
+            // dx, dy are actual deviations from 0,0
+            // But deviation is calculated as diameter (2 * radius).
+            // So graphical position (x, y) = (dx * scale, dy * scale)
+            // Wait, SVG circle radius is 0.5. This represents tolerance radius (totalTol/2).
+            // So scale * (totalTol/2) = 0.5 => scale = 1 / totalTol. Correct.
+            
+            let svgX = dx * scale;
+            let svgY = -dy * scale; // Invert Y because SVG Y goes down
+
+            // Clamp visualization to avoid point flying off screen
+            const maxViz = 1.4;
+            if (svgX > maxViz) svgX = maxViz;
+            if (svgX < -maxViz) svgX = -maxViz;
+            if (svgY > maxViz) svgY = maxViz;
+            if (svgY < -maxViz) svgY = -maxViz;
+
+            document.getElementById('vizPoint').setAttribute('cx', svgX);
+            document.getElementById('vizPoint').setAttribute('cy', svgY);
+            document.getElementById('vizLine').setAttribute('x2', svgX);
+            document.getElementById('vizLine').setAttribute('y2', svgY);
+
+            // Color change if fail
+            const dist = Math.sqrt(svgX*svgX + svgY*svgY);
+            // 0.5 is the radius of tolerance zone
+            const color = dist <= 0.501 ? '#10b981' : '#ef4444'; // Green or Red
+            document.getElementById('vizPoint').setAttribute('fill', color);
+            document.getElementById('vizLine').setAttribute('stroke', color);
+        }
+
+        // --- Bonus Calculator Logic ---
+        let currentBonusMode = 'mmc';
+
+        function setBonusMode(mode) {
+            currentBonusMode = mode;
+            // Update UI Buttons
+            if(mode === 'mmc') {
+                document.getElementById('btn-mmc').className = "flex-1 py-2 px-4 rounded-lg bg-blue-600 text-white font-medium text-sm transition-colors";
+                document.getElementById('btn-lmc').className = "flex-1 py-2 px-4 rounded-lg bg-gray-100 text-gray-600 font-medium text-sm hover:bg-gray-200 transition-colors";
+                document.getElementById('lbl-limit').innerText = "MMC Limit Size";
+            } else {
+                document.getElementById('btn-lmc').className = "flex-1 py-2 px-4 rounded-lg bg-blue-600 text-white font-medium text-sm transition-colors";
+                document.getElementById('btn-mmc').className = "flex-1 py-2 px-4 rounded-lg bg-gray-100 text-gray-600 font-medium text-sm hover:bg-gray-200 transition-colors";
+                document.getElementById('lbl-limit').innerText = "LMC Limit Size";
+            }
+            calculateBonus();
+        }
+
+        function calculateBonus() {
+            const featType = document.getElementById('bonusFeatureType').value;
+            const limit = parseFloat(document.getElementById('limitSize').value) || 0;
+            const act = parseFloat(document.getElementById('producedSize').value) || 0;
+            const base = parseFloat(document.getElementById('baseTol').value) || 0;
+            
+            let bonus = 0;
+            let explanation = "";
+
+            if (currentBonusMode === 'mmc') {
+                // MMC Logic
+                if (featType === 'internal') {
+                    // Internal (Hole): MMC is Smallest Size (e.g., 0.500). 
+                    // As hole gets bigger (0.505), we have more room.
+                    // Bonus = Actual - MMC
+                    bonus = act - limit;
+                    explanation = `Internal Feature @ MMC: Bonus = Actual Size (${act}) - MMC Limit (${limit}).`;
+                } else {
+                    // External (Pin): MMC is Largest Size (e.g., 0.500).
+                    // As pin gets smaller (0.495), we have more room.
+                    // Bonus = MMC - Actual
+                    bonus = limit - act;
+                    explanation = `External Feature @ MMC: Bonus = MMC Limit (${limit}) - Actual Size (${act}).`;
+                }
+            } else {
+                // LMC Logic
+                if (featType === 'internal') {
+                    // Internal (Hole): LMC is Largest Size.
+                    // As hole gets smaller towards MMC, we gain bonus relative to LMC? 
+                    // LMC Concept: usually used for wall thickness.
+                    // Bonus = LMC - Actual
+                    bonus = limit - act;
+                    explanation = `Internal Feature @ LMC: Bonus = LMC Limit (${limit}) - Actual Size (${act}).`;
+                } else {
+                    // External (Pin): LMC is Smallest Size.
+                    // Bonus = Actual - LMC
+                    bonus = act - limit;
+                    explanation = `External Feature @ LMC: Bonus = Actual Size (${act}) - LMC Limit (${limit}).`;
+                }
+            }
+
+            if (bonus < 0) bonus = 0;
+
+            document.getElementById('resBase').innerText = base.toFixed(3);
+            document.getElementById('resBonus').innerText = "+ " + bonus.toFixed(3);
+            document.getElementById('resTotal').innerText = (base + bonus).toFixed(3);
+            document.getElementById('bonusExplanation').innerText = explanation;
+        }
+
+        // --- Symbol Library Data ---
+        const symbols = [
+            { name: "Straightness", type: "form", char: "⎯", desc: "Controls the straightness of a surface or axis." },
+            { name: "Flatness", type: "form", char: "⏥", desc: "Controls the flatness of a surface." },
+            { name: "Circularity", type: "form", char: "○", desc: "Controls the roundness of a circular feature." },
+            { name: "Cylindricity", type: "form", char: "⌭", desc: "Controls the roundness and straightness of a cylindrical feature." },
+            { name: "Perpendicularity", type: "orientation", char: "⟂", desc: "Controls the angle of a surface, axis, or line to a datum at 90°." },
+            { name: "Angularity", type: "orientation", char: "∠", desc: "Controls a surface, axis, or line at a specified angle to a datum." },
+            { name: "Parallelism", type: "orientation", char: "∥", desc: "Controls a surface or axis to be equidistant at all points from a datum." },
+            { name: "Position", type: "location", char: "⌖", desc: "Controls the location of a feature relative to datums." },
+            { name: "Concentricity", type: "location", char: "◎", desc: "Controls the central axis of the referenced feature to a datum axis." },
+            { name: "Symmetry", type: "location", char: "⌯", desc: "Controls two opposed surfaces to be symmetric around a datum." },
+            { name: "Circular Runout", type: "runout", char: "↗", desc: "Controls the circular runout of a surface relative to a datum axis." },
+            { name: "Total Runout", type: "runout", char: "⌰", desc: "Controls the total runout of a surface relative to a datum axis." },
+            { name: "Profile of a Line", type: "profile", char: "⌒", desc: "Controls the shape of a curve in a 2D cross-section." },
+            { name: "Profile of a Surface", type: "profile", char: "⌓", desc: "Controls the shape of a 3D surface." },
+        ];
+
+        function filterSymbols(type) {
+            const grid = document.getElementById('symbolGrid');
+            grid.innerHTML = '';
+            
+            const filtered = type === 'all' ? symbols : symbols.filter(s => s.type === type);
+
+            filtered.forEach(s => {
+                const card = document.createElement('div');
+                card.className = "bg-white p-4 rounded-xl border border-gray-200 hover:shadow-md transition-shadow";
+                card.innerHTML = `
+                    <div class="flex items-center gap-4 mb-2">
+                        <div class="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-3xl font-bold text-gray-800">
+                            ${s.char}
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-900">${s.name}</h4>
+                            <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 capitalize">${s.type}</span>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600 leading-snug">${s.desc}</p>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            calculatePosition();
+            calculateBonus();
+            filterSymbols('all');
+        });
+
+    </script>
+</body>
+</html>
